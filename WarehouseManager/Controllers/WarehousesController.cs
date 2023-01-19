@@ -20,8 +20,17 @@ namespace WarehouseManager.Controllers
         [HttpPost]
         public async Task<IActionResult> AddNewProductAsync([FromBody] NewProduct newProduct)
         {
-            var resultId = await _databaseService.AddNewProductAsync(newProduct);
-            return Ok("New product added successfully | ID: " + resultId.ToString() );
+            var databaseResponse = await _databaseService.AddNewProductAsync(newProduct);
+
+            if (databaseResponse.StatusCode == 200)
+            {
+                return Ok(databaseResponse.Message  + databaseResponse.IdProductWarehouse);
+            }
+            else if (databaseResponse.StatusCode == 404)
+            {
+                return NotFound(databaseResponse.Message);
+            }
+            else return StatusCode(500);
         }
 
     }

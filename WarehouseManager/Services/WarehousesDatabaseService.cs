@@ -1,6 +1,9 @@
 ﻿using System.Data.Common;
 using System.Data.SqlClient;
 using WarehouseManager.Models;
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Xml.Linq;
 
 namespace WarehouseManager.Services
 {
@@ -13,10 +16,11 @@ namespace WarehouseManager.Services
             _configuration = configuration;
         }
 
-        public async Task<int> AddNewProductAsync(NewProduct newProduct)
+        public async Task<DatabaseResponse> AddNewProductAsync(NewProduct newProduct)
         {
-            using var con = new SqlConnection("Data Source=db-mssql;Initial Catalog=pgago;Integrated Security=True");
-            using var com = new SqlCommand("select * from animal", con);
+            using var con = new SqlConnection(_configuration.GetConnectionString("ProductionDb"));
+            using var com = new SqlCommand("SELECT * FROM product WHERE IdProduct = @IdProduct", con);
+            com.Parameters.AddWithValue("@IdProduct", newProduct.IdProduct);
 
             await con.OpenAsync();
             DbTransaction tran = await con.BeginTransactionAsync();
@@ -24,29 +28,73 @@ namespace WarehouseManager.Services
 
             try
             {
-                var list = new List<Animal>();
+                int idProductCheck = -1;
                 using (var dr = await com.ExecuteReaderAsync())
                 {
                     while (await dr.ReadAsync())
                     {
-                        list.Add(new Animal
-                        {
-                            Name = dr["Name"].ToString(),
-                            Description = dr["Description"].ToString()
-                        });
+                        idProductCheck = (int)dr["IdProduct"];
                     }
                 }
 
-                com.Parameters.Clear();
-                com.CommandText = "UPDATE Animal SET Name=Name+'a' WHERE Name=@Name";
-                com.Parameters.AddWithValue("@Name", list[0].Name);
-                await com.ExecuteNonQueryAsync();
+                if (idProductCheck != newProduct.IdProduct)
+                {
+                    return new DatabaseResponse(404, "Product with given Id was not found", -1);
+                }
 
-                throw new Exception("Error");
+                
 
                 com.Parameters.Clear();
-                com.Parameters.AddWithValue("@Name", list[1].Name);
-                await com.ExecuteNonQueryAsync();
+                com.CommandText = "SELECT * FROM Warehouse WHERE IdWarehouse = @IdWarehouse";
+                com.Parameters.AddWithValue("@IdWarehouse", newProduct.IdWarehouse);
+
+
+                int idWarehouseCheck = -1;
+                using (var dr = await com.ExecuteReaderAsync())
+                {
+                    while (await dr.ReadAsync())
+                    {
+                        idWarehouseCheck = (int)dr["IdWarehouse"];
+                    }
+                }
+                if (idWarehouseCheck != newProduct.IdWarehouse)
+                {
+                    return new DatabaseResponse(404, "Warehouse with given Id was not found", 0);
+                }
+
+                com.Parameters.Clear();
+                com.CommandText = "SELECT * FROM [dbo].[Order] WHERE IdProduct = @IdProduct";
+                com.Parameters.AddWithValue("@IdProduct", newProduct.IdProduct);
+
+                int productOrderedCheck = -1;
+                int amountCheck = -1;
+                string createdAtCheck = "";
+                using (var dr = await com.ExecuteReaderAsync())
+                {
+                    while (await dr.ReadAsync())
+                    {
+                        productOrderedCheck = (int)dr["IdProduct"];
+                        amountCheck = (int)dr["Amount"];
+                        createdAtCheck = (string)dr["CreatedAt"];
+                    }
+                }
+
+                DateTime d1 = DateTime.Parse(createdAtCheck);
+                DateTime d2 = DateTime.Parse(newProduct.CreatedAt);
+                int dateComparison = d1.CompareTo(d2);
+
+                Console.WriteLine(productOrderedCheck);
+                Console.WriteLine(amountCheck);
+                Console.WriteLine(dateComparison);
+
+
+                if (productOrderedCheck != newProduct.IdProduct ||
+                    amountCheck != newProduct.Amount ||
+                    dateComparison < 0
+                    )
+                {
+                    return new DatabaseResponse(404, "Order for new product was not found", -1);
+                }
 
                 await tran.CommitAsync();
             }
@@ -61,7 +109,7 @@ namespace WarehouseManager.Services
                 await tran.RollbackAsync();
             }
 
-            return 1;
+            return new DatabaseResponse(200, "New product added succesfully with Id: ", 12345);
         }
     }
 }

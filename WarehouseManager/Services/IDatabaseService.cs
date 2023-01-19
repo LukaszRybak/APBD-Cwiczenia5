@@ -1,9 +1,10 @@
-﻿using WarehouseManager.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using WarehouseManager.Models;
 
 namespace WarehouseManager.Services
 {
     public interface IDatabaseService
     {
-        Task<int> AddNewProductAsync(NewProduct newProduct);
+        Task<DatabaseResponse> AddNewProductAsync(NewProduct newProduct);
     }
 }
