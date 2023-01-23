@@ -111,11 +111,25 @@ namespace WarehouseManager.Services
                             string idProductWarehouse = ((int)dr["IdProductWarehouse"]).ToString();
                             return new DatabaseResponse(200, "Order already fulfilled with ID:", idProductWarehouse);
                         }
-
-
                     }
                 }
 
+                com.Parameters.Clear();
+                com.CommandText = "UPDATE [dbo].[Order] " +
+                                  "SET FulfilledAt = GETDATE() " +
+                                  "WHERE IdOrder = @idOrder"; ;
+                com.Parameters.AddWithValue("@IdOrder", idOrder);
+
+                int rowsAffected = com.ExecuteNonQuery();
+
+                /*if (rowsAffected == 1)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }*/
 
                 await tran.CommitAsync();
             }
