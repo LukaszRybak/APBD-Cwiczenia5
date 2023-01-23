@@ -4,6 +4,7 @@ using WarehouseManager.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Xml.Linq;
+using System.Globalization;
 
 namespace WarehouseManager.Services
 {
@@ -28,7 +29,7 @@ namespace WarehouseManager.Services
 
             try
             {
-                int idProductCheck = -1;
+                int idProductCheck = new();
                 using (var dr = await com.ExecuteReaderAsync())
                 {
                     while (await dr.ReadAsync())
@@ -39,17 +40,17 @@ namespace WarehouseManager.Services
 
                 if (idProductCheck != newProduct.IdProduct)
                 {
-                    return new DatabaseResponse(404, "Product with given Id was not found", -1);
+                    return new DatabaseResponse(404, "Product with given Id was not found", "");
                 }
 
-                
+
 
                 com.Parameters.Clear();
                 com.CommandText = "SELECT * FROM Warehouse WHERE IdWarehouse = @IdWarehouse";
                 com.Parameters.AddWithValue("@IdWarehouse", newProduct.IdWarehouse);
 
 
-                int idWarehouseCheck = -1;
+                int idWarehouseCheck = new();
                 using (var dr = await com.ExecuteReaderAsync())
                 {
                     while (await dr.ReadAsync())
@@ -59,42 +60,62 @@ namespace WarehouseManager.Services
                 }
                 if (idWarehouseCheck != newProduct.IdWarehouse)
                 {
-                    return new DatabaseResponse(404, "Warehouse with given Id was not found", 0);
+                    return new DatabaseResponse(404, "Warehouse with given Id was not found", "");
                 }
 
                 com.Parameters.Clear();
-                com.CommandText = "SELECT * FROM [dbo].[Order] WHERE IdProduct = @IdProduct";
+                com.CommandText = "SELECT * " +
+                                  "FROM [dbo].[Order] " +
+                                  "WHERE IdProduct = @IdProduct " +
+                                  "AND Amount = @Amount ";
                 com.Parameters.AddWithValue("@IdProduct", newProduct.IdProduct);
+                com.Parameters.AddWithValue("@Amount", newProduct.Amount);
 
-                int productOrderedCheck = -1;
-                int amountCheck = -1;
-                string createdAtCheck = "";
+                DateTime databaseCreatedAt = new();
+                int idOrder = new();
                 using (var dr = await com.ExecuteReaderAsync())
                 {
-                    while (await dr.ReadAsync())
+                    if (dr.HasRows)
                     {
-                        productOrderedCheck = (int)dr["IdProduct"];
-                        amountCheck = (int)dr["Amount"];
-                        createdAtCheck = (string)dr["CreatedAt"];
+                        while (await dr.ReadAsync())
+                        {
+                            databaseCreatedAt = dr.GetDateTime(dr.GetOrdinal("CreatedAt"));
+                            idOrder = (int)dr["IdOrder"];
+                        }
+                    }
+                    else
+                    {
+                        return new DatabaseResponse(404, "Matching order was not found", "");
+                    }
+                }
+                DateTime newProductCreatedAt = DateTime.ParseExact(newProduct.CreatedAt, "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture);
+                int dateComparison = databaseCreatedAt.CompareTo(newProductCreatedAt);
+
+                if (dateComparison >= 0)
+                {
+                    return new DatabaseResponse(404, "Matching order was not found", "");
+                }
+
+                com.Parameters.Clear();
+                com.CommandText = "SELECT [IdProductWarehouse] " +
+                                  "FROM [dbo].[Product_Warehouse] " +
+                                  "WHERE IdOrder = @IdOrder";
+                com.Parameters.AddWithValue("@IdOrder", idOrder);
+
+                using (var dr = await com.ExecuteReaderAsync())
+                {
+                    if (dr.HasRows)
+                    {
+                        while (await dr.ReadAsync())
+                        {
+                            string idProductWarehouse = ((int)dr["IdProductWarehouse"]).ToString();
+                            return new DatabaseResponse(200, "Order already fulfilled with ID:", idProductWarehouse);
+                        }
+
+
                     }
                 }
 
-                DateTime d1 = DateTime.Parse(createdAtCheck);
-                DateTime d2 = DateTime.Parse(newProduct.CreatedAt);
-                int dateComparison = d1.CompareTo(d2);
-
-                Console.WriteLine(productOrderedCheck);
-                Console.WriteLine(amountCheck);
-                Console.WriteLine(dateComparison);
-
-
-                if (productOrderedCheck != newProduct.IdProduct ||
-                    amountCheck != newProduct.Amount ||
-                    dateComparison < 0
-                    )
-                {
-                    return new DatabaseResponse(404, "Order for new product was not found", -1);
-                }
 
                 await tran.CommitAsync();
             }
@@ -109,7 +130,7 @@ namespace WarehouseManager.Services
                 await tran.RollbackAsync();
             }
 
-            return new DatabaseResponse(200, "New product added succesfully with Id: ", 12345);
+            return new DatabaseResponse(200, "New product added succesfully with ID:", "12345");
         }
     }
 }

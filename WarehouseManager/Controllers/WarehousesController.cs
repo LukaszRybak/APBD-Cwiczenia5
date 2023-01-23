@@ -24,7 +24,7 @@ namespace WarehouseManager.Controllers
 
             if (databaseResponse.StatusCode == 200)
             {
-                return Ok(databaseResponse.Message  + databaseResponse.IdProductWarehouse);
+                return Ok(databaseResponse.Message  +" "+ databaseResponse.IdProductWarehouse);
             }
             else if (databaseResponse.StatusCode == 404)
             {
