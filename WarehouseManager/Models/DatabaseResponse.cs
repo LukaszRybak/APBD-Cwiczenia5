@@ -7,13 +7,11 @@ namespace WarehouseManager.Models
     {
         public int StatusCode { get; set; }
         public string Message { get; set; }
-        public string IdProductWarehouse { get; set; }
 
-        public DatabaseResponse(int statusCode, string message, string idProductWarehouse)
+        public DatabaseResponse(int statusCode, string message)
         {
             StatusCode = statusCode;
             Message = message;
-            IdProductWarehouse = idProductWarehouse;
         }
     }
 }

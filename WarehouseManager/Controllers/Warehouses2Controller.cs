@@ -5,14 +5,14 @@ using WarehouseManager.Services;
 
 namespace WarehouseManager.Controllers
 {
-    [Route("api/warehouses")]
+    [Route("api/warehouses2")]
     [ApiController]
-    public class WarehousesController : ControllerBase
+    public class Warehouses2Controller : ControllerBase
     {
 
         private IDatabaseService _databaseService;
 
-        public WarehousesController(IDatabaseService databaseService)
+        public Warehouses2Controller(IDatabaseService databaseService)
         {
             _databaseService = databaseService;
         }
@@ -20,7 +20,7 @@ namespace WarehouseManager.Controllers
         [HttpPost]
         public async Task<IActionResult> AddNewProductAsync([FromBody] NewProduct newProduct)
         {
-            var databaseResponse = await _databaseService.AddNewProductAsync(newProduct);
+            var databaseResponse = await _databaseService.AddNewProduct2Async(newProduct);
 
             if (databaseResponse.StatusCode == 200)
             {
